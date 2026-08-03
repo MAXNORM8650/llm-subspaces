@@ -1,0 +1,22 @@
+[
+  {
+    "tag": "Chat \u2014 staying motivated",
+    "file": "chat.json",
+    "query": "What is a good way to stay motivated on a long project?"
+  },
+  {
+    "tag": "Code \u2014 nth Fibonacci",
+    "file": "code.json",
+    "query": "Write a Python function to return the nth Fibonacci number."
+  },
+  {
+    "tag": "Math \u2014 solve 3x+7=22",
+    "file": "math.json",
+    "query": "Solve for x: 3x + 7 = 22. Show every step."
+  },
+  {
+    "tag": "Science \u2014 why sky is blue",
+    "file": "science.json",
+    "query": "Explain why the sky appears blue during the day."
+  }
+]
