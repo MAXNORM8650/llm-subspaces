@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>LLM Subspace Atlas — information flow through knowledge subspaces</title>
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
+<style>
+  :root { --attn:#2b7bd6; --mlp:#e8823a; --bg:#0e1117; --fg:#e6e6e6; --mut:#8b98a9; }
+  body { margin:0; background:var(--bg); color:var(--fg); font-family:-apple-system,Segoe UI,Roboto,sans-serif; }
+  header { padding:16px 24px; border-bottom:1px solid #222; }
+  h1 { font-size:19px; margin:0 0 4px; } .sub { color:var(--mut); font-size:13px; }
+  .bar { padding:12px 24px; display:flex; gap:16px; align-items:center; flex-wrap:wrap; }
+  select { background:#1a1f29; color:var(--fg); border:1px solid #333; border-radius:6px; padding:6px 10px; font-size:14px; }
+  .q { color:var(--mut); font-size:13px; font-style:italic; max-width:640px; }
+  .legend span { display:inline-flex; align-items:center; gap:6px; margin-right:16px; font-size:13px; }
+  .sw { width:14px; height:14px; border-radius:3px; display:inline-block; }
+  #chart { width:100%; overflow-x:auto; }
+  .node rect { cursor:pointer; }
+  .link { fill:none; opacity:.38; } .link:hover { opacity:.75; }
+  .node text { fill:var(--fg); font-size:9px; pointer-events:none; }
+  #tip { position:fixed; pointer-events:none; background:#0b0e14; border:1px solid #333; border-radius:6px;
+         padding:8px 10px; font-size:12px; opacity:0; transition:opacity .1s; max-width:280px; z-index:9; }
+  #tip b { color:#7fb2ff; } code { color:#ffd479; }
+  footer { padding:14px 24px; color:var(--mut); font-size:12px; border-top:1px solid #222; }
+</style>
+</head>
+<body>
+<header>
+  <h1>LLM Subspace Atlas — how a query flows through knowledge subspaces</h1>
+  <div class="sub">Each ribbon is a weight module's knowledge subspace; width &amp; color intensity = how strongly the query <b>uses</b> it, layer by layer (input → output). Hover a node for the top subspace directions it activated.</div>
+</header>
+<div class="bar">
+  <label>Query: <select id="pick"></select></label>
+  <span class="q" id="qtext"></span>
+  <span class="legend"><span><span class="sw" style="background:var(--attn)"></span>attention (q/k/v/o)</span>
+  <span><span class="sw" style="background:var(--mlp)"></span>MLP (gate/up/down)</span></span>
+</div>
+<div id="chart"></div>
+<div id="tip"></div>
+<footer>Usage = mean |σ<sub>j</sub>·(v<sub>j</sub><sup>T</sup>x)| over tokens, from the per-weight SVD atlas.
+ v1 shows per-layer subspace <i>usage</i> (which subspaces the info touches); causal cross-subspace routing (path patching) is future work.</footer>
+
+<script src="app.js"></script>
+</body>
+</html>

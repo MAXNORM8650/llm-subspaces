@@ -1,0 +1,6 @@
+atlas_*/
+flow_data/
+__pycache__/
+*.pyc
+*.pt
+.DS_Store
