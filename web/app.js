@@ -10,8 +10,23 @@ async function boot() {
     o.value = m.file; o.textContent = m.tag; o.dataset.q = m.query; pick.appendChild(o);
   });
   pick.onchange = () => load(pick.value, pick.selectedOptions[0].dataset.q);
-  load(manifest[0].file, manifest[0].query);
+  if (manifest.length) load(manifest[0].file, manifest[0].query);
 }
+
+async function runLive() {
+  const q = document.getElementById("q").value.trim();
+  if (!q) return;
+  document.getElementById("qtext").textContent = "“" + q + "” (live)";
+  try {
+    const data = await fetch("/flow?q=" + encodeURIComponent(q)).then(r => r.json());
+    if (data.error) { alert(data.error); return; }
+    render(data);
+  } catch (e) { alert("Live endpoint not available (static demo). Run app_live.py on a GPU host."); }
+}
+window.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("go").onclick = runLive;
+  document.getElementById("q").addEventListener("keydown", e => { if (e.key === "Enter") runLive(); });
+});
 
 async function load(file, query) {
   document.getElementById("qtext").textContent = "“" + query + "”";

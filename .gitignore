@@ -4,3 +4,5 @@ __pycache__/
 *.pyc
 *.pt
 .DS_Store
+.venv/
+flow_*.json

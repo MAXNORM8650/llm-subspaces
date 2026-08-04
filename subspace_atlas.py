@@ -61,6 +61,8 @@ class SubspaceAttributor:
             d = torch.load(f, map_location=device)
             self.atlas[name] = (d["V"].float(), d["sigma"].float())     # V:(in,k) sigma:(k,)
         self._hooks, self._usage = [], {}
+        self._per_token, self._tok, self._topd = False, {}, 16
+        self._on = False   # hooks compute ONLY during attribute()/attribute_tokens(); off during generate()
         name2mod = dict(model.named_modules())
         for name, (V, sig) in self.atlas.items():
             mod = name2mod[name]
@@ -68,17 +70,38 @@ class SubspaceAttributor:
             self._hooks.append(mod.register_forward_pre_hook(self._hook))
 
     def _hook(self, mod, args):
+        if not self._on:                                        # skip during generation -> fast decode
+            return
         x = args[0]                                              # (B, T, in)
         V, sig = self.atlas[mod._atlas_name]
         proj = torch.einsum("bti,ik->btk", x.float(), V)        # (B,T,k) coeff on each direction
-        u = (proj.abs() * sig).mean(dim=(0, 1))                 # (k,) mean |σ_j·(v_jᵀx)| over tokens
-        self._usage[mod._atlas_name] = u.detach().cpu()
+        pv = proj.abs() * sig                                   # (B,T,k) |σ_j·(v_jᵀx)|
+        if self._per_token:                                     # keep PER-POSITION (B=1): sum + top-16
+            p = pv[0]                                            # (T,k)
+            kk = min(self._topd, p.shape[-1])
+            tv = p.topk(kk, dim=-1)
+            self._tok[mod._atlas_name] = (p.sum(-1).detach().cpu(),      # (T,)   usage-sum per token
+                                          tv.indices.detach().cpu(),     # (T,kk) top dirs per token
+                                          tv.values.detach().cpu())      # (T,kk) their values
+        else:
+            self._usage[mod._atlas_name] = pv.mean(dim=(0, 1)).detach().cpu()  # (k,) mean over tokens
 
     @torch.no_grad()
     def attribute(self, input_ids):
-        self._usage = {}
+        self._usage = {}; self._on = True
         self.model(input_ids.to(self.device))
+        self._on = False
         return dict(self._usage)                                 # {module: usage_vector(k)}
+
+    @torch.no_grad()
+    def attribute_tokens(self, input_ids):
+        """Per-position attribution over the whole sequence (teacher-forced single forward).
+        Returns {module: (sum(T,), top_idx(T,16), top_val(T,16))} — position t = computation
+        that predicts token t+1."""
+        self._per_token, self._tok, self._on = True, {}, True
+        self.model(input_ids.to(self.device))
+        self._per_token = self._on = False
+        return dict(self._tok)
 
     def close(self):
         for h in self._hooks:

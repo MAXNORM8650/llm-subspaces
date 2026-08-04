@@ -1,60 +1,36 @@
-# LLM Subspace Atlas
+# LLM Subspaces
 
-**Extract the knowledge subspaces of any LLM's weights, and see — for any question — which subspaces the information flows through, layer by layer.**
+Extract the **knowledge subspaces** of any Hugging Face LLM and watch, **per generated token**, which subspaces the model uses — live, in a multi-turn chat.
 
-Every linear weight `W = UΣVᵀ` has a set of *knowledge directions* (its right singular vectors `V`). This toolkit (1) **extracts** those subspaces at scale for any HuggingFace model, and (2) **attributes**, for a given query, how strongly each subspace is used at each layer — rendered as an interactive **Sankey flow** from input to output.
+For every target linear `W = UΣVᵀ`, we keep the top‑k right singular vectors `V_k` (k = effective rank at an energy threshold) as that layer's knowledge directions. During generation we hook the target linears and score each direction by `|σ_j · (v_jᵀ x)|` — "how much did this token use this subspace?"
 
-![demo](web/screenshot.png)
+## Features
+- **Per-token attribution** — one teacher-forced forward captures which subspaces fire at *every* generated token (position `t` = the computation that predicts token `t+1`).
+- **Multi-turn chat** — conversation history is kept; each turn is attributed.
+- **Firing grid** — modules × layers; ▶ play or scrub the token timeline to watch it light up (query-specific, baseline-subtracted).
+- **Leading-node trajectory** — connects the top-firing cell of each token to the next, drawing the path the dominant subspace traces through the network.
+- **Click-to-drill** — top subspace directions for any cell at the selected token.
+- **Sonification** — attention (sine) vs MLP (sawtooth), pitched by center-of-mass firing layer, volume by activity.
 
-## Why
-Fine-tuning and Mixture-of-Experts adapters implicitly reuse these subspaces. Making them explicit lets you:
-- **initialize experts on real knowledge subspaces** instead of random directions,
-- **route** tokens by which subspace they need,
-- and **interpret** which knowledge a query actually engages.
-
-## Install
+## Usage
 ```bash
 pip install -r requirements.txt
-```
 
-## 1. Extract the atlas (scales to any model — streams one weight at a time)
-```bash
+# 1. build the atlas once (streamed SVD, works for any model size)
 python subspace_atlas.py extract --model Qwen/Qwen2.5-3B-Instruct --out atlas_qwen3b --energy 0.95
-```
-Saves `{module: V_k, σ_k, eff_rank}` per target linear (k = per-weight rank at 95% energy).
 
-## 2a. Live — type any question, see its flow
-```bash
-python app.py --model Qwen/Qwen2.5-3B-Instruct --atlas atlas_qwen3b
-# open http://localhost:8000, type a question
+# 2. serve the live app
+python app_live.py --model Qwen/Qwen2.5-3B-Instruct --atlas atlas_qwen3b --port 8000 --web web --device cuda
+# open http://localhost:8000
 ```
 
-## 2b. Static site (precomputed queries, GitHub-Pages ready)
-```bash
-python export_flow.py --model Qwen/Qwen2.5-3B-Instruct --atlas atlas_qwen3b \
-    --query "Solve for x: 3x+7=22" --tag math --out web/data
-# repeat for other queries, then:
-cd web && python -m http.server 8080   # or push web/ to GitHub Pages
-```
-
-## How the attribution works
-For input activation `x` into a weight, usage of subspace direction `j` is
-`usage_j = |σ_j · (v_jᵀ x)|`, averaged over tokens. The Sankey ribbon for each
-`(layer, module)` is its total usage; hover shows the top subspace directions activated.
-
-## What it shows today vs. next
-- **v1 (now):** per-layer subspace **usage** — which subspaces the query touches on its way to the output.
-- **v2 (roadmap):** *causal* cross-subspace routing (which subspace in layer L feeds which in L+1) via path patching; discriminative-subspace analysis (which subspaces separate domains); subspace-initialized MoE experts.
+## Files
+- `subspace_atlas.py` — streamed truncated-SVD atlas extraction + `SubspaceAttributor` (forward-hook attribution; per-token mode).
+- `app_live.py` — dependency-free stdlib server: `/chat` (generate + per-token flow), `/drill`, `/reset`.
+- `web/index.html` — the UI (firing grid, token timeline, leading-node path, drill panel, chat, sonification).
 
 ## Findings (Qwen2.5-3B)
 - Knowledge subspaces are **high-rank** (r@95% ≈ 700–1700 of 2048); attention is more compressible than MLP.
-- The **top-energy subspaces are general** — math/code/chat queries use nearly the same ones (cosine ≈ 0.99). Domain specialization, if any, lives in the **discriminative** (not top-energy) directions.
+- The **top-energy subspaces are general** — math/code/chat queries reuse nearly the same ones; per-query specialization shows up after baseline subtraction.
 
-## Layout
-```
-subspace_atlas.py   extract + attribute (library + CLI)
-export_flow.py      query -> Sankey JSON
-app.py              live Flask server (any question)
-web/                static viz (D3 sankey) + precomputed data/
-```
-MIT licensed.
+Notes: attribution hooks are gated to run only during the attribution pass, not during generation (fast decode). The atlas (`atlas_*/`, `*.pt`) is large and git-ignored — rebuild it with `extract`. MIT licensed.
