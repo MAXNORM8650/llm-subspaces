@@ -1,8 +1,22 @@
-atlas_*/
-flow_data/
 __pycache__/
-*.pyc
-*.pt
-.DS_Store
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
 .venv/
-flow_*.json
+venv/
+
+# Generated analysis and model artifacts
+artifacts/
+outputs/
+*.gguf
+*.imatrix
+*.logits
+*.safetensors
+*.bin
+*.pt
+
+# Logs and local configuration
+*.log
+.env
+config.local.json

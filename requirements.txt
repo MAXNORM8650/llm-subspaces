@@ -1,4 +1,1 @@
-torch>=2.0
-transformers>=4.40
-safetensors>=0.4
-flask>=3.0
+-e .

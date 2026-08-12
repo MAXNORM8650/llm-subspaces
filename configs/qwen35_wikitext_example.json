@@ -1,0 +1,78 @@
+{
+  "model": {
+    "hf_model": "Qwen/Qwen3.5-9B",
+    "bf16_gguf": "/path/to/Qwen3.5-9B-BF16.gguf",
+    "architecture_mapper": "qwen-llama",
+    "local_files_only": false,
+    "trust_remote_code": false
+  },
+  "dataset": {
+    "source": "wikitext",
+    "config": "wikitext-2-raw-v1",
+    "split": "train",
+    "text_field": "text",
+    "messages_field": null,
+    "prompt_template": null,
+    "system_prompt": null,
+    "samples": 100,
+    "seed": 42,
+    "max_length": 2048
+  },
+  "runtime": {
+    "device": "cuda",
+    "projection_dtype": "float16"
+  },
+  "atlas": {
+    "output_dir": "../artifacts/atlas",
+    "energy": 1.0,
+    "max_rank": 0,
+    "storage_dtype": "float16",
+    "svd_driver": "gesvd",
+    "target_suffixes": [
+      "q_proj",
+      "k_proj",
+      "v_proj",
+      "o_proj",
+      "gate_proj",
+      "up_proj",
+      "down_proj"
+    ]
+  },
+  "analysis": {
+    "output_json": "../artifacts/analysis/subspace_analysis.json",
+    "calibration_text": "../artifacts/analysis/calibration.txt",
+    "thresholds": [
+      0.8,
+      0.85,
+      0.875,
+      0.9,
+      0.91,
+      0.92,
+      0.93,
+      0.94,
+      0.95,
+      0.97,
+      0.98,
+      0.99,
+      0.995
+    ]
+  },
+  "report": {
+    "output_json": "../artifacts/reports/subspace_report.json",
+    "output_markdown": "../artifacts/reports/SUBSPACE_EFFECTIVENESS.md"
+  },
+  "llama_cpp": {
+    "imatrix_bin": "/path/to/llama.cpp/build/bin/llama-imatrix",
+    "quantize_bin": "/path/to/llama.cpp/build/bin/llama-quantize",
+    "server_bin": "/path/to/llama.cpp/build/bin/llama-server",
+    "imatrix_context_size": 2048,
+    "imatrix_chunks": -1,
+    "quantize_threads": 16,
+    "smoke_context_size": 2048,
+    "smoke_port": 8090
+  },
+  "quantization": {
+    "imatrix": "../artifacts/quantization/calibration.imatrix.gguf",
+    "output_dir": "../artifacts/quantization"
+  }
+}
